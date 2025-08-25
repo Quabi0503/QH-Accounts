@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Panel Admin - QH Accounts</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    form input { margin: 5px 0; padding: 8px; width: 300px; }
+    .card { border: 1px solid #ccc; border-radius: 10px; padding: 15px; margin: 10px 0; }
+    .actions button { margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Panel de Administración - QH Accounts</h1>
+  <button onclick="logout()">🚪 Cerrar Sesión</button>
+
+  <h2>➕ Agregar / Editar App</h2>
+  <form id="form-app">
+    <input type="hidden" id="id" />
+    <input type="text" id="nombre" placeholder="Nombre" required><br>
+    <input type="number" id="precio" placeholder="Precio" required><br>
+    <input type="text" id="descripcion" placeholder="Descripción" required><br>
+    <input type="text" id="logo" placeholder="URL del Logo" required><br>
+    <button type="submit">Guardar</button>
+  </form>
+
+  <h2>📋 Lista de Apps</h2>
+  <div id="lista-apps"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // Configuración Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyDVwkPEd3vSkzBRrzlioTTNVVscYb54xf4",
+      authDomain: "qh-accounts.firebaseapp.com",
+      projectId: "qh-accounts",
+      storageBucket: "qh-accounts.appspot.com",
+      messagingSenderId: "612428730491",
+      appId: "1:612428730491:web:a89c1b883ada85ee7592de"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 🔐 Proteger con login
+    if (localStorage.getItem("auth") !== "true") {
+      window.location.href = "login.html";
+    }
+    function logout() {
+      localStorage.removeItem("auth");
+      window.location.href = "login.html";
+    }
+    window.logout = logout;
+
+    const form = document.getElementById("form-app");
+    const lista = document.getElementById("lista-apps");
+
+    // Guardar o actualizar
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("id").value;
+      const nombre = document.getElementById("nombre").value;
+      const precio = document.getElementById("precio").value;
+      const descripcion = document.getElementById("descripcion").value;
+      const logo = document.getElementById("logo").value;
+
+      if (id) {
+        await updateDoc(doc(db, "apps", id), { nombre, precio, descripcion, logo });
+        alert("✅ App actualizada");
+      } else {
+        await addDoc(collection(db, "apps"), { nombre, precio, descripcion, logo });
+        alert("✅ App agregada");
+      }
+      form.reset();
+      document.getElementById("id").value = "";
+      cargarApps();
+    });
+
+    // Listar apps
+    async function cargarApps() {
+      lista.innerHTML = "";
+      const q = await getDocs(collection(db, "apps"));
+      q.forEach((d) => {
+        const app = d.data();
+        lista.innerHTML += `
+          <div class="card">
+            <img src="${app.logo}" width="100"><br>
+            <strong>${app.nombre}</strong><br>
+            <em>${app.descripcion}</em><br>
+            <b>S/ ${app.precio}</b>
+            <div class="actions">
+              <button onclick="editarApp('${d.id}','${app.nombre}','${app.precio}','${app.descripcion}','${app.logo}')">✏️ Editar</button>
+              <button onclick="eliminarApp('${d.id}')">🗑️ Eliminar</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    window.editarApp = (id, nombre, precio, descripcion, logo) => {
+      document.getElementById("id").value = id;
+      document.getElementById("nombre").value = nombre;
+      document.getElementById("precio").value = precio;
+      document.getElementById("descripcion").value = descripcion;
+      document.getElementById("logo").value = logo;
+    };
+
+    window.eliminarApp = async (id) => {
+      if (confirm("¿Eliminar app?")) {
+        await deleteDoc(doc(db, "apps", id));
+        alert("🗑️ Eliminada");
+        cargarApps();
+      }
+    };
+
+    cargarApps();
+  </script>
+</body>
+</html>
